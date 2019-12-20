@@ -1,7 +1,5 @@
 from collections import namedtuple
 
-Person = namedtuple("Person", "name class_time ready_time buffer")
-
 # ALL TIMES ARE IN MINUTES AFTER 6:00 AM
 
 def mtt(minutes): # minutes to time, for printing purposes
@@ -12,6 +10,8 @@ def ttm(hour, minutes): # time to minutes
 
 # Goal: Maximize possible sleep
 
+# A Person is a data point
+Person = namedtuple("Person", "name class_time ready_time buffer")
 # A Candidate has a list of Events and the person added
 Candidate = namedtuple("Candidate", "events added")
 # An Event is the wake-up event, who and when, start time and finish time
@@ -26,29 +26,32 @@ Event = namedtuple("Event", "name start done")
 #   Move on with this one, until data is empty. Use buffer.
 
 # previous_best is a list of events, data is a least of people
-def scheduler(previous_best, data):
+def scheduler(data, previous_best = []):
     if len(data) == 0:
         return previous_best
     
     candidates = []
     for person in data:
-        candidates.append(Candidate(combine_before(person, previous_best), person))
-        candidates.append(Candidate(combine_after(person, previous_best), person))
+        if len(previous_best) == 0:
+            candidates.append(Candidate(
+                [Event(
+                    person.name,
+                    person.class_time - person.buffer - person.ready_time,
+                    person.class_time - person.buffer
+                )],
+                person
+            ))
+        else:
+            candidates.append(Candidate(combine_before(person, previous_best), person))
+            candidates.append(Candidate(combine_after(person, previous_best), person))
 
     best = max(candidates, key=lambda c: calculate_sleep(c.events))
     data.remove(best.added)
 
-    return scheduler(best.events, data)
+    return scheduler(data, best.events)
 
 # Put the event before the current events
 def combine_before(person, events):
-    if len(events) == 0:
-        return [Event(
-            person.name, 
-            person.class_time - person.buffer - person.ready_time,
-            person.class_time - person.buffer
-        )]
-    
     # find the earliest use of the bathroom.
     earliest = min(events, key=lambda e: e.start)
 
@@ -63,13 +66,6 @@ def combine_before(person, events):
 
 # Put the event after the current events
 def combine_after(person, events):
-    if len(events) == 0:
-        return [Event(
-            person.name, 
-            person.class_time - person.buffer - person.ready_time,
-            person.class_time - person.buffer
-        )]
-
     # find the latest use of the bathroom
     latest = max(events, key=lambda e: e.done)
 
