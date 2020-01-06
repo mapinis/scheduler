@@ -85,3 +85,35 @@ def combine_after(person, events):
 # give a list of events, return the total sleep achieved
 def calculate_sleep(events):
     return sum(map(lambda e: e.start, events))
+
+
+def optimized(data, so_far = []):
+    if len(data) == 0:
+        return so_far
+
+    if len(so_far) == 0:
+        best = max(data, key=lambda p: p.class_time - p.buffer - p.ready_time)
+        data.remove(best)
+        return optimized(data, [Event(
+            best.name,
+            best.class_time - best.buffer - best.ready_time,
+            best.class_time - best.buffer
+        )])
+
+    latest = so_far[-1]
+    best = max(data, key=lambda p: helper(p, latest))
+
+    diff = max([best.class_time - best.buffer - latest.start, 0])
+    so_far.append(Event(
+        best.name,
+        best.class_time - best.buffer - best.ready_time - diff,
+        best.class_time - best.buffer - diff
+    ))
+    data.remove(best)
+
+    return optimized(data, so_far)
+
+# return the start time of the events if this person goes before latest
+def helper(person, latest):
+    diff = max([person.class_time - person.buffer - latest.start, 0])
+    return person.class_time - person.buffer - person.ready_time - diff
